@@ -6,25 +6,50 @@ def notion(x):
     pass
 
 
-cap = cv2.VideoCapture(0)
+src = cv2.VideoCapture(0)
 font = cv2.FONT_HERSHEY_DUPLEX
+tmpli = [0,0]
 while True:
-    _, img = cap.read()
+    _, img = src.read()
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     dst = img.copy()
 
     blur = cv2.GaussianBlur(gray, (5,5), 5)
-    canny = cv2.Canny(blur, 100, 255)
-
-    corners = cv2.goodFeaturesToTrack(canny, 8, 0.01, 5, blockSize=6, useHarrisDetector=True, k=0.03)
+    canny = cv2.Canny(blur, 100, 200)
+    try:
+        contours, hier = cv2.findContours(canny, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        contours = sorted(contours, key=lambda x: cv2.contourArea(x), reverse=True)
+        tmp = contours[0]
+        x, y, w, h = cv2.boundingRect(tmp)
+        cv2.rectangle(dst, (x, y), (x + w, y + h), (0, 0, 255), 3)
+        p_center = w/2
+        roi1 = canny[y:y+h, x:x+w]
+        #### DRAW A CIRCLE ARROUND THE ARROW TO FIND THE ANGLE OF THE ARROW
+        for c in contours:
+            # find minimum area
+            x, y, w, h = cv2.boundingRect(c)
+            # cv2.rectangle(dst, (x, y), (x + w, y + h), (0, 0, 255), 3)
+            (x, y), radius = cv2.minEnclosingCircle(c)
+            center = (int(x), int(y))
+            radius = int(radius)
+            cv2.circle(img, center, radius, (0, 255, 0), 2)
+            cv2.circle(img, center, 2, (0, 255, 0), 2)
+            #cv2.circle(img, (int(am), int(bm)), 2, (0, 255, 0), 2)
+    except IndexError:
+        pass
 
     try:
+        corners = cv2.goodFeaturesToTrack(roi1, 9, 0.3, 50, blockSize=6, useHarrisDetector=True, k=0.03)
         corners = np.int0(corners)
     except TypeError:
         pass
     try:
+        tmp = 0
         for i in corners:
             cv2.circle(dst, tuple(i[0]), 3, (0, 0, 255), 2)
+            # if tmp == 1:
+            #     break
+            # tmp += 1
 
         for i in corners[0]:
             a0 = i[0]
@@ -41,55 +66,82 @@ while True:
         for i in corners[4]:
             a4 = i[0]
             b4 = i[1]
+        for i in corners[5]:
+            a5 = i[0]
+            b5 = i[1]
+        for i in corners[6]:
+            a6 = i[0]
+            b6 = i[1]
+        for i in corners[7]:
+            a7 = i[0]
+            b7 = i[1]
+        for i in corners[8]:
+            a8 = i[0]
+            a8 = i[1]
 
-        am = (a0 + a1) / 2
-        bm = (b0 + b1) / 2
+        am = (a2 + a1) / 2
+        bm = (b2 + b1) / 2
+        astart = (a5 + a6) / 2
+        bstart = (b5 + b6) / 2
         #print(am, bm)
+        li_x = [a0,a1,a2,a3,a4,a5,a6,a7,a8]
+        print(li_x)
+        cntR = 0
+        cntL = 0
+        for i in li_x:
+            if i >= p_center+100:
+                cntL+=1
+            elif i <= p_center-100:
+                cntR += 1
+        print(p_center)
+        print(cntR, cntL)
+        if cntR > cntL:
+            tmpli[1] += 1
+            #print("Right")
+        elif cntR < cntL:
+            tmpli[0] += 1
+            #print("Left")
 
-        contours, hier = cv2.findContours(canny, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        contours = sorted(contours, key=lambda x: cv2.contourArea(x), reverse=True)
-
-        #### DRAW A CIRCLE ARROUND THE ARROW TO FIND THE ANGLE OF THE ARROW
-        for c in contours:
-            # find minimum area
-            x, y, w, h = cv2.boundingRect(c)
-            (x, y), radius = cv2.minEnclosingCircle(c)
-            center = (int(x), int(y))
-            radius = int(radius)
-            cv2.circle(img, center, radius, (0, 255, 0), 2)
-            cv2.circle(img, center, 2, (0, 255, 0), 2)
-            cv2.circle(img, (int(am), int(bm)), 2, (0, 255, 0), 2)
-
-        # Drawing lines
-        cv2.line(img, center, (int(am), int(bm)), (255, 0, 0), 1)
-        cv2.line(img, center, (int(radius + x), int(y)), (255, 0, 0), 1)
-
-        # Angles
-        atan = math.atan2(int(bm) - int(y), int(am) - int(x))
-        angle = math.degrees(atan)
-        print('angle=', angle)
-        if (angle >= -90 and angle < 90):
-            cv2.putText(dst, 'RIGHT', (10, 85), font, 1, (255, 255, 0))
-            print("RIGHT")
-        # elif (angle >= 45 and angle < 135):
-        #     cv2.putText(dst, 'DOWN', (10, 85), font, 1, (255, 255, 0))
-        #     print("DOWN")
-        elif (angle >= -180 and angle < -90):
-            cv2.putText(dst, 'LEFT', (10, 85), font, 1, (255, 255, 0))
-            print("LEFT")
-        elif (angle >= 90 and angle <= 180):
-            cv2.putText(dst, 'LEFT', (10, 85), font, 1, (255, 255, 0))
-            print("LEFT")
-        # elif (angle > -135 and angle < -45):
-        #     cv2.putText(dst, 'UP', (10, 85), font, 1, (255, 255, 0))
-        #     print("UP")
+        if sum(tmpli) >= 10:
+            if tmpli[0] >= tmpli[1]:
+                print("Left")
+            else:
+                print("Right")
+            #print("num : ", tmp, x,y)
+            #tmp += 1
+        # # Drawing lines
+        # cv2.line(dst, (int(astart), int(bstart)), (int(am), int(bm)), (0, 255, 0), 1)
+        # #cv2.line(dst, center, (int(w), int(h)), (0, 255, 0), 1)
+        # print(int(am), int(bm))
+        # print(int(w), int(h))
+        # # Angles
+        # atan = math.atan2(int(bm) - int(bstart), int(am) - int(astart))
+        # angle = math.degrees(atan)
+        # print('angle=', angle)
+        # if (angle >= -90 and angle < 90):
+        #     cv2.putText(dst, 'RIGHT', (10, 85), font, 1, (255, 255, 0))
+        #     print("RIGHT")
+        # # elif (angle >= 45 and angle < 135):
+        # #     cv2.putText(dst, 'DOWN', (10, 85), font, 1, (255, 255, 0))
+        # #     print("DOWN")
+        # elif (angle >= -180 and angle < -90):
+        #     cv2.putText(dst, 'LEFT', (10, 85), font, 1, (255, 255, 0))
+        #     print("LEFT")
+        # elif (angle >= 90 and angle <= 180):
+        #     cv2.putText(dst, 'LEFT', (10, 85), font, 1, (255, 255, 0))
+        #     print("LEFT")
+        # # elif (angle > -135 and angle < -45):
+        # #     cv2.putText(dst, 'UP', (10, 85), font, 1, (255, 255, 0))
+        # #     print("UP")
     except IndexError:
         pass
     except TypeError:
         pass
-
+    cv2.imshow("roi", roi1)
     cv2.imshow("can", canny)
     cv2.imshow("img", dst)
     cv2.waitKey(25)
 cv2.destroyAllWindows()
+
+
 

@@ -1,0 +1,78 @@
+import numpy as np
+import cv2 as cv
+import matplotlib.pyplot as plt
+
+
+cap = cv.VideoCapture(0)
+
+while True:
+    retval, frame = cap.read()
+    if not retval:
+        break
+    imgw = cv.imread('w.jpg',cv.IMREAD_GRAYSCALE)
+    imgn = cv.imread('nnnnn.jpg',cv.IMREAD_GRAYSCALE)
+    imge = cv.imread('e.jpg',cv.IMREAD_GRAYSCALE)
+    imgs = cv.imread('sss.jpg',cv.IMREAD_GRAYSCALE)
+    imgv = frame.copy()
+    grayv = cv.cvtColor(imgv, cv.COLOR_BGR2GRAY)
+    # Initiate SIFT detector
+    sift = cv.SIFT_create()
+    # find the keypoints and descriptors with SIFT
+    kpw, desw = sift.detectAndCompute(imgw,None)
+    kpn, desn = sift.detectAndCompute(imgn,None)
+    kpe, dese = sift.detectAndCompute(imge,None)
+    kps, dess = sift.detectAndCompute(imgs,None)
+    kpv, desv = sift.detectAndCompute(grayv,None)
+    # BFMatcher with default params
+    bf = cv.BFMatcher()
+    matchesw = bf.knnMatch(desw,desv,k=2)
+    matchesn = bf.knnMatch(desn,desv,k=2)
+    matchese = bf.knnMatch(dese,desv,k=2)
+    matchess = bf.knnMatch(dess,desv,k=2)
+
+    # Apply ratio test
+    good = []
+    count=[0,0,0,0]
+    for m,n in matchesw:
+        if m.distance < 0.8*n.distance:
+            good.append([m])
+            count[0] = count[0]+1
+    print('west:',count[0])
+    for m,n in matchesn:
+        if m.distance < 0.8*n.distance:
+            good.append([m])
+            count[1] = count[1]+1
+    print('north:',count[1])
+    for m,n in matchese:
+        if m.distance < 0.8*n.distance:
+            good.append([m])
+            count[2] = count[2]+1
+    print('east:',count[2])
+    for m,n in matchess:
+        if m.distance < 0.8*n.distance:
+            good.append([m])
+            count[3] = count[3]+1
+    print('south:',count[3])
+
+    if max(count)>15:
+        if max(count) == count[0]:
+            print('west')
+
+        elif max(count) == count[1]:
+            print('north')
+
+        elif max(count) == count[2]:
+            print('east')
+
+        elif max(count) == count[3]:
+            print('south')
+
+
+
+    cv.imshow('1',imgv)
+    key = cv.waitKey(25)
+    if key == 27:
+        break
+if cap.isOpened():
+    cap.release()
+    cv.destroyAllWindows()

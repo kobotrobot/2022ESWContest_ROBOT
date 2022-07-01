@@ -33,9 +33,13 @@ while True:
     # mask_black = cv2.inRange(frame_hsv, lower_black, upper_black)
     # result_black = cv2.bitwise_and(frame, frame, mask_black)
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    kernel = cv2.getStructuringElement(shape=cv2.MORPH_RECT, ksize=(3,3))
+    erode = cv2.erode(gray, kernel, iterations=5)
+    dilate = cv2.dilate(gray, kernel, iterations=5)
+    erode2 = cv2.erode(dilate, kernel, iterations=7)
     lower_black = 0
     upper_black = 30
-    ret, dst = cv2.threshold(gray, 80, 255, cv2.THRESH_BINARY)    # +cv2.THRESH_OTSU
+    ret, dst = cv2.threshold(erode2, 70, 255, cv2.THRESH_BINARY)    # +cv2.THRESH_OTSU
     mask_black = cv2.inRange(dst, lower_black, upper_black)
     result_black = cv2.bitwise_and(frame, frame, mask_black)
 

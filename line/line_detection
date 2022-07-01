@@ -1,62 +1,51 @@
-import cv2
 import numpy as np
-import math
-from math import *
+import cv2
 
 cap = cv2.VideoCapture(0)
-tmp1 = []
-tmp2 = []
+cap.set(3, 1280)
+cap.set(4, 720)
+
 while True:
     retval, frame = cap.read()
     if not retval:
         break
-    frame2 = frame.copy()
-    img_rgb = cv2.cvtColor(frame2, cv2.COLOR_BGR2RGB)
+
+    src = frame.copy()
+    dst = src.copy()
+
+    img_rgb = cv2.cvtColor(src, cv2.COLOR_BGR2HSV)
     # whiteLower = (200, 200, 200)
     # whiteUpper = (255, 255, 255)
     yellowLower = (10, 100, 100)
     yellowUpper = (40, 255, 255)
     mask = cv2.inRange(img_rgb, yellowLower, yellowUpper)
+    cv2.imshow('mask', mask)
     img2 = cv2.bitwise_and(img_rgb, img_rgb, mask=mask)
-    gray_img = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
-    blur_img = cv2.GaussianBlur(gray_img, (3, 3), 0)
-    dst = cv2.Canny(blur_img, 50, 200)
+    gray = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
 
-    img = np.zeros((480, 640), np.uint8)  # height, width
-    roi1_pt = np.array([[45, 360], [0, 430], [310, 430], [310, 360]])
-    cv2.fillConvexPoly(img, roi1_pt, (255, 0, 0))
-    roi1 = cv2.bitwise_and(dst, img)
+    canny = cv2.Canny(gray, 5000, 1500, apertureSize = 5, L2gradient = True)
+    lines = cv2.HoughLinesP(canny, 0.8, np.pi / 180, 90, minLineLength = 10, maxLineGap = 100)
 
-    img = np.zeros((480, 640), np.uint8)  # height, width
-    roi2_pt = np.array([[330, 360], [330, 430], [640, 430], [595, 360]])
-    cv2.fillConvexPoly(img, roi2_pt, (255, 0, 0))
-    roi2 = cv2.bitwise_and(dst, img)
+    try:
+        for i in lines:
+            cv2.line(dst, (int(i[0][0]), int(i[0][1])), (int(i[0][2]), int(i[0][3])), (0, 0, 255), 2)
+            print(int(i[0][0]), int(i[0][1]), int(i[0][2]), int(i[0][3]))
+            if abs(int(i[0][0])-int(i[0][2])) < 80:
+                print('straight')
+            elif abs(int(i[0][0])-int(i[0][2])) < 150:
+                if(int(i[0][0])-int(i[0][2]))<0:
+                    print('move right')
+                else:
+                    print('move left')
+            else:
+                print("rear")
 
-    lines = cv2.HoughLinesP(roi1, 1.0, np.pi / 180, 50, minLineLength=1, maxLineGap=1000)
-    tmp1.append(lines)
-    if lines is not None:
-        roi1_pt1 = (lines[0][0][0], lines[0][0][1])
-        roi1_pt2 = (lines[0][0][2], lines[0][0][3])
-        cv2.line(frame, roi1_pt1, roi1_pt2, (0, 0, 255), 2, cv2.LINE_AA)
-        print(" circle roi_pt2", roi1_pt2)
-    elif lines is None:
-        lines = tmp1[-2]
-    else:
-        print("fail")
-    cv2.circle(frame, roi1_pt2, 5, (255, 0, 0), -1)
-
-    # roi2 영역의 직선 검출
-    lines2 = cv2.HoughLinesP(roi2, 1.0, np.pi / 180, 50, minLineLength=1, maxLineGap=1000)
-    tmp2.append(lines2)
-    if lines2 is not None:
-        roi2_pt1 = (lines2[0][0][0], lines2[0][0][1])
-        roi2_pt2 = (lines2[0][0][2], lines2[0][0][3])
-        cv2.line(frame, roi2_pt1, roi2_pt2, (0, 0, 255), 2, cv2.LINE_AA)
-        print(" circle ro2_pt1", roi2_pt1)
-    elif lines2 is None:
-        lines2 = tmp2[-2]
-    else:
-        print("fail")
-        
-    cv2.circle(frame, roi2_pt1, 5, (255, 0, 0), -1)
-    cv2.line(frame, (0, 360), (640, 360), (0, 255, 0), 1, cv2.LINE_4)
+    except TypeError:
+        pass
+    cv2.imshow("dst", dst)
+    key = cv2.waitKey(25)
+    if key == 27:
+        break
+if cap.isOpened():
+    cap.release()
+    cv2.destroyAllWindows()

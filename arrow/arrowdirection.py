@@ -25,8 +25,15 @@ while True:
 
         cv2.rectangle(dst, (x, y), (x + w, y + h), (0, 0, 255), 3)
         p_center = w/2
-        roi1 = canny[y-10:y+h+10, x-10:x+w+10]
-        roi2 = dst[y - 10:y + h + 10, x - 10:x + w + 10]
+        # 음수범위 예외처리
+        ry = y - 10
+        rx = x - 10
+        if ry < 0:
+            ry = 0
+        if rx < 0:
+            rx = 0
+        roi1 = canny[ry:y+h+10, rx:x+w+10]
+        roi2 = dst[ry:y + h + 10, rx:x + w + 10]
         #### DRAW A CIRCLE ARROUND THE ARROW TO FIND THE ANGLE OF THE ARROW
         # 사실상 안쓰는 코드
         for c in contours:
